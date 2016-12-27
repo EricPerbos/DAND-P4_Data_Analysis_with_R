@@ -1,0 +1,813 @@
+---
+output:
+  html_document:
+     fig_width : 10
+---
+Exploratory Data Analysis of White Wines by _Eric Perbos-Brinck_
+========================================================
+
+This dataset is related to white variants of the Portuguese "Vinho Verde" wine.
+
+Number of Instances: white wine - 4898
+
+The inputs include objective tests (e.g. PH values) and the output is based on sensory data
+(median of at least 3 evaluations made by wine experts).
+
+Each expert graded the wine quality between 0 (very bad) and 10 (very excellent).
+
+Input variables (based on physicochemical tests):
+
+1 - fixed acidity (tartaric acid - g / dm^3)
+
+2 - volatile acidity (acetic acid - g / dm^3)
+
+3 - citric acid (g / dm^3)
+
+4 - residual sugar (g / dm^3)
+
+5 - chlorides (sodium chloride - g / dm^3)
+
+6 - free sulfur dioxide (mg / dm^3)
+
+7 - total sulfur dioxide (mg / dm^3)
+
+8 - density (g / cm^3)
+
+9 - pH
+
+10 - sulphates (potassium sulphate - g / dm3)
+
+11 - alcohol (% by volume)
+
+Output variable (based on sensory data):
+
+12 - quality (score between 0 and 10)
+
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
+
+Citation Request:
+  This dataset is public available for research. The details are described in [Cortez et al., 2009]. 
+  Please include this citation if you plan to use this database:
+
+  P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. 
+  Modeling wine preferences by data mining from physicochemical properties.
+  In Decision Support Systems, Elsevier, 47(4):547-553. ISSN: 0167-9236.
+
+  Available at: [@Elsevier] http://dx.doi.org/10.1016/j.dss.2009.05.016
+                [Pre-press (pdf)] http://www3.dsi.uminho.pt/pcortez/winequality09.pdf
+                [bib] http://www3.dsi.uminho.pt/pcortez/dss09.bib
+                
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(alr3)
+library(dplyr)
+library(GGally)
+library(ggthemes)
+library(gridExtra)
+library(memisc)
+library(psych)
+library(reshape2)
+library(scales)
+library(tidyr)
+
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+
+whites <- read.csv('wineQualitywhites.csv')
+
+```
+
+# UNIVARIATE PLOTS SECTION
+
+```{r echo=FALSE, Summary}
+
+dim(whites)
+
+str(whites)
+
+summary(whites)
+
+# delete column "X" as duplicate of ID's
+whites <- subset(whites, select = -c(X) )
+
+```
+The variable "X", not listed in the documentation, is a duplicate ID so we can delete it.
+
+## Multiple histograms with raw data
+
+A first look at the summary and the generic histograms shows that many variables have extreme outliers to the right, we may correct it in individual histograms by dropping the extreme 1% values. 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# generic multiple histograms of all variables.
+melted_data <- melt(whites, id.vars='quality', variable.name='attribute')
+
+ggplot(melted_data, aes(value)) +
+  geom_histogram() +
+  facet_wrap(~attribute, scales="free")
+
+
+```
+
+
+## Individual histograms with summary statistics
+
+The individual histograms include average, median, q1 and q3 lines.
+
+Most distributions appear normal and unimodals, with exception of "residual.sugar".
+
+When running a log_scale, we can see that "residual.sugar" tends to be bimodal.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Creates a function to draw repetitive histograms with common parameters, a theme and summary statistics including average, median, q1 and q3 lines.
+
+# histogram WITH 1% delete
+stat_lines1 <- function(x = x, binwidth) {
+      ggplot(data = whites, aes(whites[,x])) +
+      theme_economist(dkpanel=TRUE)+
+      xlim(quantile(whites[,x], 0.01),
+      quantile(whites[,x], 0.99))+
+      geom_histogram(binwidth = binwidth, color = 'black', fill = '#F79420') +
+      geom_vline(aes(xintercept=mean(whites[,x]), color="Average"), linetype="dashed", size=1.25, show.legend = TRUE) +
+      geom_vline(aes(xintercept=median(whites[,x]), color="Median"), size=1.25) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.25), color="Q1"), linetype="dotted", size=1.2) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.75), color="Q3"), linetype="dotted", size=1.2) +
+      scale_colour_manual(name="Stats", values=c(Average="red", Median="blue", Q1="green", Q3="green")) +
+      scale_linetype_manual(name="Stats", values=c(Average="dashed",Median="solid")) +
+      xlab(x)
+} 
+
+# histogram WITHOUT 1% delete and Log_scale
+stat_lines2_log <- function(x = x, binwidth) {
+      ggplot(data = whites, aes(whites[,x])) +
+      theme_wsj() +
+      geom_histogram(binwidth = binwidth, color = 'black', fill = '#F79420') +
+      geom_vline(aes(xintercept=mean(whites[,x]), color="Average"), linetype="dashed", size=1.25, show.legend = TRUE) +
+      geom_vline(aes(xintercept=median(whites[,x]), color="Median"), size=1.25) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.25), color="Q1"), linetype="dotted", size=1.2) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.75), color="Q3"), linetype="dotted", size=1.2) +
+      scale_colour_manual(name="Stats", values=c(Average="red", Median="blue", Q1="green", Q3="green")) +
+      scale_linetype_manual(name="Stats", values=c(Average="dashed",Median="solid")) +
+      scale_x_log10()+
+      xlab(x)
+}
+
+# histogram WITHOUT 1% delete
+stat_lines2 <- function(x = x, binwidth) {
+      ggplot(data = whites, aes(whites[,x])) +
+      theme_economist(dkpanel=TRUE)+
+      geom_histogram(binwidth = binwidth, color = 'black', fill = '#F79420') +
+      geom_vline(aes(xintercept=mean(whites[,x]), color="Average"), linetype="dashed", size=1.25, show.legend = TRUE) +
+      geom_vline(aes(xintercept=median(whites[,x]), color="Median"), size=1.25) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.25), color="Q1"), linetype="dotted", size=1.2) +
+      geom_vline(aes(xintercept=quantile(whites[,x],0.75), color="Q3"), linetype="dotted", size=1.2) +
+      scale_colour_manual(name="Stats", values=c(Average="red", Median="blue", Q1="green", Q3="green")) +
+      scale_linetype_manual(name="Stats", values=c(Average="dashed",Median="solid")) +
+      xlab(x)
+} 
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("fixed.acidity", 0.1)
+
+```
+
+_Fixed Acidity_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("volatile.acidity", 0.01)
+
+```
+
+_Volatile Acidity_, with bottom and top 1% ignored: normal and unimodal distribution, skewed to the right.
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("citric.acid", 0.05)
+
+```
+
+_Citric Acid_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("residual.sugar", 0.5)
+
+```
+
+_Residual Sugar_, with bottom and top 1% ignored: highly skewed with a long tail to the right
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines2_log("residual.sugar", 0.04)
+
+```
+
+_Residual Sugar_, with bottom and top 1% ignored, log10: bimodal distribution around 1.5 and 10.0 values
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("chlorides", 0.005)
+
+```
+
+_Chlorides_, with bottom and top 1% ignored: normal and unimodal distribution, small long tail to right
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("free.sulfur.dioxide", 1)
+
+```
+
+_Free Sulfur Dioxide_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("total.sulfur.dioxide", 2)
+
+```
+
+_Total Sulfur Dioxide_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("density", 0.0002)
+
+```
+
+_Density_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("pH", 0.02)
+
+```
+
+_pH_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("sulphates", 0.01)
+
+```
+
+_Sulphates_, with bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines1("alcohol", 0.1)
+
+```
+
+_Fixed acidity_, without bottom and top 1% ignored: normal and unimodal distribution
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+stat_lines2("quality", 1)
+
+```
+
+_Quality_, without bottom and top 1% ignored: normal and unimodal distribution
+
+<br>
+<br>
+<br>
+<br>
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+The original dataset consists of 4898 observations of 13 variables. One variable "X" was a duplicate of each observation ID's and was removed for the analysis.
+
+All variables are numerically measured with the exception of Quality which is a discrete integer from 3 to 9.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+The main feature of interest is the _Quality_ variable, discretly measured by a panel of human experts.
+
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+The other variables are chemical properties measured by hardware in a laboratory environment, they will serve as a framework to investigate potential relations between chemicals and _quality_.
+
+### Did you create any new variables from existing variables in the dataset?
+
+Beside the use of _factor(quality)_, I created a _quality.subset_ variable ('Lowest', 'Average', 'Highest') for later use in the Multivariate Plots Section.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+While looking at the Summary Statistics and the generic Histograms of raw data, I found that most variables suffered from extreme outliers. I chose to remove the bottom and top 1% for individual histograms, while displaying the value of Summary statistics as dotted lines for safeguard.
+
+In the case of _residual.sugar_, I chose to create a second histogram on a _log10_ scale which demonstrated a bimodal distribution.
+<br>
+<br>
+<br>
+<br>
+
+
+# BIVARIATE PLOTS SECTION
+
+```{r echo=FALSE, Bivariate_Plots}
+
+
+```
+
+We start with a pairs plot, from _psych_ package, with correlations:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=10}
+
+# pairs plot from "psych" package
+pairs.panels(whites)
+
+```
+
+Excluding "free vs total.sulfur.dioxides" due to their direct relationship, We can see strong to moderate correlation in:
+
+* density vs residual.sugar 0.84
+* density vs alcohol -0.78
+* density vs total.sulfur.dioxide 0.53
+* alcohol vs total.sulfur.dioxide -0.45
+* alcohol vs residual.sugar -0.45
+* alcohol vs quality 0.44
+* pH vs fixed.acidity -0.43
+
+We are going to represent those via scatter plots.
+
+## Scatter Plots
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Creates a function to draw repetitive scatter plots with common parameters
+
+scatter_plot <- function(x, y) {
+    ggplot(whites, aes_q(x = x, y = y))+
+    theme_economist(dkpanel=TRUE)+
+    geom_point(alpha = 1/5, position = position_jitter(h = 0), size = 2) +
+    geom_smooth(method = 'lm')
+}
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~density, ~residual.sugar)  + 
+  coord_cartesian(xlim=c(0.985, 1.01), ylim=c(0.8, 30))
+
+```
+
+Scatter plot: _residual.sugar_ vs _density_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~density, ~alcohol)  + 
+  coord_cartesian(xlim=c(0.985, 1.01), ylim=c(8, 14))
+
+```
+
+Scatter plot: _alcohol_ vs _density_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~density, ~total.sulfur.dioxide) +
+    coord_cartesian(xlim=c(0.985, 1.01), ylim=c(50, 400))
+
+```
+
+Scatter plot: _total.sulfur.dioxide_ vs _density_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~alcohol, ~total.sulfur.dioxide) +
+    coord_cartesian()
+
+```
+
+Scatter plot: _total.sulfur.dioxide_ vs _alcohol_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~alcohol, ~residual.sugar) +
+    coord_cartesian(xlim=c(8, 14), ylim=c(0.8,40))
+
+```
+
+Scatter plot: _residual.sugar_ vs _alcohol_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~alcohol, ~quality) +
+    coord_cartesian(xlim=c(8, 14), ylim=c(3, 9))
+
+```
+
+Scatter plot: _quality_ vs _alcohol_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~pH, ~fixed.acidity) +
+    coord_cartesian(xlim=c(2.7, 3.8 ), ylim=c(4, 12))
+
+```
+
+Scatter plot: _fixed.acidity_ vs _pH_
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+scatter_plot(~density, ~alcohol) +
+    coord_cartesian(xlim=c(0.985,1.005), ylim=c(0.8,30))
+
+```
+
+Scatter plot: _alcohol_ vs _density_
+<br>
+<br>
+<br>
+<br>
+
+## BOX PLOTS
+
+As _Quality_ is the main feature of interest in the dataset, I chose to dedicate a whole serie of Box Plots to it vs the other variables. Maybe this could reveal some insight.
+
+But in most cases, apart from some diminishing standard deviation as quality rises, little was revealed.
+
+Except in one case: _quality_ vs _alcohol_, which showed that from _Quality=6_ and above, there was a clear increase of _alcohol_ levels.
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# Creates a function to draw repetitive box plots with common parameters
+
+box_plot <- function(y) {
+  ggplot(whites, aes_q(x = ~factor(quality), y = y))+
+    theme_economist(dkpanel=TRUE)+
+    geom_boxplot(aes(fill = quality))
+}
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~fixed.acidity)
+
+```
+
+Box plot: _fixed.acidity_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~volatile.acidity)
+
+```
+
+Box plot: _volatile.acidity_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~citric.acid)
+
+```
+
+Box plot: _citric.acid_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~residual.sugar)
+
+```
+
+Box plot: _residual.sugar_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~chlorides)
+
+```
+
+Box plot: _chlorides_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~free.sulfur.dioxide)
+
+```
+
+Box plot: _free.sulfur.dioxide_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~total.sulfur.dioxide)
+
+```
+
+Box plot: _total.sulfur.dioxide_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~density)
+
+```
+
+Box plot: _density_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~pH)
+
+```
+
+Box plot: _pH_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~sulphates)
+
+```
+
+Box plot: _sulphates_ per _quality_ grade
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+box_plot(~alcohol)
+
+```
+
+Box plot: _alcohol_ per _quality_ grade
+<br>
+<br>
+<br>
+<br>
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+The feature of interest, _Quality_, has the strongest variation with the _alcohol_ variable: while lower _quality_ wines seem to share a lower level of alcohol, once quality reach grade 6 and above, there is a significant increase of alcohol means.
+The other features showed an evenly distribution between the seven quality grades.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+The scatter plots visually confirm the correlations, positive and negative, between chemical components as per the pair plots.
+For example, there is a strong positive correlation between _density_ and _residual.sugar_ **(+0.84)** while a strong negative one exists between _density_ and _alcohol_ **(-0.78)**.
+
+### What was the strongest relationship you found?
+
+I found the strongest relationship between _density_ and _residual.sugar_ with a correlation **(+0.84)**.
+<br>
+<br>
+<br>
+
+# Multivariate Plots Section
+
+We are going to investigate the Top 3 correlations (> |0.5|) in relation with _Quality_.
+
+* density vs residual.sugar +0.84
+* density vs alcohol -0.78
+* density vs total.sulfur.dioxide +0.53
+<br>
+
+Also for better ergonomics, we will group the _Quality_ grades into 3 categories:
+
+* "Lowest" -> (3, 4)
+* "Average" -> (5, 6)
+* "Highest" -> (7, 8, 9)
+
+
+```{r echo=FALSE, Multivariate_Plots}
+
+
+# Subset the lower and higher qualities for better perspective
+whites$quality.subset <- cut(whites$quality, breaks=c(2, 4, 6, 9),
+                             labels = c("Lowest", "Average", "Highest"))
+
+ggplot(data = whites, aes(x = density, y = residual.sugar, colour=quality.subset)) +
+  geom_point(alpha = 1/3, size=1) +
+  theme_economist(dkpanel=TRUE)+
+  scale_colour_wsj()+
+  coord_cartesian(xlim=c(0.9875, 1.004), ylim=c(0.8, 30)) +
+  geom_smooth(method = 'lm')
+
+```
+
+Scatter plot: _residual.sugar_ vs _density_ by **quality**
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(data = whites, aes(x = density, y = alcohol, colour=quality.subset)) +
+  geom_point(alpha = 1/3, size=1) +
+  theme_economist(dkpanel=TRUE)+
+  scale_colour_wsj()+
+  coord_cartesian(xlim=c(0.9875, 1.004), ylim=c(8, 14)) +
+  geom_smooth(method = 'lm')
+
+```
+
+Scatter plot: _density_ vs _alcohol_ by **quality**
+<br>
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(data = whites, aes(x = density, y = total.sulfur.dioxide, colour=quality.subset)) +
+  geom_point(alpha = 1/3, size=1) +
+  theme_economist(dkpanel=TRUE)+
+  scale_colour_wsj()+
+  coord_cartesian(xlim=c(0.9875, 1.004), ylim=c(0, 300)) +
+  geom_smooth(method = 'lm')
+
+```
+
+Scatter plot: _density_ vs _total.sulfur.dioxide_ by **quality**
+<br>
+<br>
+
+
+## Building a linear model
+<br>
+We investigate the creation of a linear model using the Top 5 correlated variables, added in decreasing order of correlation below. (*comments in the Multivariate Analysis*)
+<br>
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+m1 <- lm(I(quality) ~ I(alcohol), data = whites)
+m2 <- update(m1, ~ . + density)
+m3 <- update(m2, ~ . + chlorides)
+m4 <- update(m3, ~ . + volatile.acidity)
+m5 <- update(m4, ~ . + total.sulfur.dioxide)
+
+mtable(m1, m2, m3, m4, m5)
+
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest? Were there any interesting or surprising interactions between features?
+
+The _Quality_ subsets, used in scatter plots combined with regression lines, provided a clearer view in two cases:
+
+* _residual.sugar_ vs _density_ by Quality:  Highest quality wines show significantly higher residual values, per same density, than Lower ones. While Average ones sit in between.
+
+* _density_ vs _alcohol_ by Quality: similar distinction but concentrated on lower density values.
+
+There was no such observation in _density_ vs _total.sulfur.dioxide_ by quality, as all three regression lines crossed in the central area of the cloud.
+
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+We created a linear model using the lm() function, gradually including the most correlated variables in descending order (alcohol > density > chlorides ...) until completion of m5 model.
+<br>
+Although it showed some interesting factors as it included more predictors, right from the 1st iteration the R-squared value (adjusted or not) hit a 0.2 value.
+Thus we felt its potential for prediction was too limited and didn't convey further investigation with a test set.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+box_plot(~alcohol)
+
+```
+
+Box plot: _alcohol_ per _quality_ grade
+<br>
+
+### Description One
+
+This plot is the most interesting one as it shows a clear relation between alcohol level and the highest grades of wine quality (7,8,9).
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+ggplot(data = whites, aes(x = density, y = residual.sugar, colour=quality.subset)) +
+  geom_point(alpha = 1/3, size=1) +
+  theme_economist(dkpanel=TRUE)+
+  scale_colour_wsj()+
+  coord_cartesian(xlim=c(0.9875, 1.004), ylim=c(0.8, 30)) +
+  geom_smooth(method = 'lm')
+
+```
+
+Scatter plot: _residual.sugar_ vs _density_ by **quality**
+<br>
+
+### Description Two
+
+This plot positions the three subsets of _Quality_ grades with regards to their combined values of _residual.sugar_ vs _density_ .
+With the help of regression lines, we can see that Highest Grades tend to have superior _residual.sugar_ values for identical _density_ than Lowest ones.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+ggplot(data = whites, aes(x = density, y = alcohol, colour=quality.subset)) +
+  geom_point(alpha = 1/3, size=1) +
+  theme_economist(dkpanel=TRUE)+
+  scale_colour_wsj()+
+  coord_cartesian(xlim=c(0.9875, 1.004), ylim=c(8, 14)) +
+  geom_smooth(method = 'lm')
+
+```
+
+Scatter plot: _density_ vs _alcohol_ by **quality**
+<br>
+
+### Description Three
+
+In accordance with our Plot One (box plot _alcohol_ vs _quality_), this scatter plot confirms that Highest Grades have distinctively superior _alcohol_ levels than Lowest ones at lower density.
+But contrary to Plot Two, where both regression lines were parallel, the distinction fades away as _density_ increases; to the point of merging, including with Average Grades, in the vincinity of 1.000 density and 9.0 alcohol.
+------
+
+# Reflection
+
+This dataset is related to white variants of the Portuguese "Vinho Verde" wine.
+Number of Instances: white wine - 4898
+The inputs include objective tests (e.g. PH values) and the output is based on sensory data
+(median of at least 3 evaluations made by wine experts).
+Each expert graded the wine quality between 0 (very bad) and 10 (very excellent).
+<br>
+
+I started by understanding the individual variables in the dataset through histograms with summary statistics. Then I investigated the relations of key variables according to their correlations, while setting a specific part to the Feature of Interest being the subjective grade of _Quality_ by the human experts.
+<br>
+Which showed a stong relation between Higher Grades (7,8,9) and Alcohol levels (12° and above).
+I then tried to conduct Multivariate Analysis around _Quality_ with other influential variables, based on previous correlation computed.
+It confirmed some impact on Highest Grades indeed -and Lowest partly- but failed to be fully consistent for Average Grades.
+<br>
+This reduced scope of efficiency was somehow confirmed when I tried to create a Linear Model to predict _Quality_ with the Top 5 variables: the R-squared value of 0.2 was a show-stopper.
+<br>
+
+Based on my own -but limited- experience in oenology, I would suggest including other variables for each wine listed such as type of grape, type of soil and meteorology data during growth and harvest.
+
