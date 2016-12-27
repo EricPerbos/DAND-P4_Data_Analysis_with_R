@@ -1,4 +1,4 @@
-## Exploratory Data Analysis of 4,898 White Wines from Portugal
+## Exploratory Data Analysis of 4,898 white wines from Portugal
  
 _by Eric Perbos-Brinck in fulfillment of Udacity’s Data Analyst Nanodegree, Project 4_  
 </br>
