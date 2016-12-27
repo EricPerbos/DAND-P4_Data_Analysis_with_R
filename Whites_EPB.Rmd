@@ -1,4 +1,5 @@
-Exploratory Data Analysis of White Wines by _Eric Perbos-Brinck_ 
+Exploratory Data Analysis of White Wines
+by _Eric Perbos-Brinck_ 
 ========================================================
 
 This dataset is related to white variants of the Portuguese "Vinho Verde" wine.
