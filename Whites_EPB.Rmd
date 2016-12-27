@@ -3,7 +3,7 @@ output:
   html_document:
      fig_width : 10
 ---
-Exploratory Data Analysis of White Wines by _Eric Perbos-Brinck_
+Exploratory Data Analysis of White Wines by _Eric Perbos-Brinck_ 
 ========================================================
 
 This dataset is related to white variants of the Portuguese "Vinho Verde" wine.
@@ -802,7 +802,7 @@ Each expert graded the wine quality between 0 (very bad) and 10 (very excellent)
 
 I started by understanding the individual variables in the dataset through histograms with summary statistics. Then I investigated the relations of key variables according to their correlations, while setting a specific part to the Feature of Interest being the subjective grade of _Quality_ by the human experts.
 <br>
-Which showed a stong relation between Higher Grades (7,8,9) and Alcohol levels (12° and above).
+Which showed a stong relation between Higher Grades (7,8,9) and Alcohol levels (12Â° and above).
 I then tried to conduct Multivariate Analysis around _Quality_ with other influential variables, based on previous correlation computed.
 It confirmed some impact on Highest Grades indeed -and Lowest partly- but failed to be fully consistent for Average Grades.
 <br>
